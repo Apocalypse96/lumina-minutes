@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { marked } from "marked";
 import { rateLimiters, rateLimit, validateEmail, sanitizeInput } from "@/lib/rate-limiter";
 
-// Initialize Resend (will be initialized when needed)
-let resend: Resend | null = null;
-
 export async function POST(request: NextRequest) {
   try {
+    console.log("🔍 Email API called - Starting email send process with Gmail SMTP...");
+    
     // Rate limiting
     const rateLimitResult = await rateLimit(rateLimiters.email, request, null);
     if (!rateLimitResult.success) {
+      console.log("❌ Rate limit exceeded:", rateLimitResult);
       return NextResponse.json(
         { 
           error: "Email rate limit exceeded. Please try again later.",
@@ -28,9 +28,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { recipients, summary, instruction, timestamp } = await request.json();
+    console.log("📧 Email request data:", { 
+      recipientsCount: recipients?.length, 
+      hasSummary: !!summary, 
+      hasInstruction: !!instruction,
+      timestamp 
+    });
 
     // Enhanced input validation
     if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+      console.log("❌ Invalid recipients:", recipients);
       return NextResponse.json(
         { error: "Recipients are required and must be an array" },
         { status: 400 }
@@ -38,6 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!summary || typeof summary !== "string") {
+      console.log("❌ Invalid summary:", typeof summary);
       return NextResponse.json(
         { error: "Summary is required and must be a string" },
         { status: 400 }
@@ -45,23 +53,32 @@ export async function POST(request: NextRequest) {
     }
 
     if (recipients.length > 10) {
+      console.log("❌ Too many recipients:", recipients.length);
       return NextResponse.json(
         { error: "Maximum 10 recipients allowed per request" },
         { status: 400 }
       );
     }
 
-    if (!process.env.RESEND_API_KEY) {
+    // Check Gmail credentials
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.log("❌ Gmail credentials not configured");
       return NextResponse.json(
-        { error: "Resend API key not configured" },
+        { error: "Gmail credentials not configured. Please check your environment variables." },
         { status: 500 }
       );
     }
 
-    // Initialize Resend with API key
-    if (!resend) {
-      resend = new Resend(process.env.RESEND_API_KEY);
-    }
+    console.log("✅ Gmail credentials found");
+
+    // Create Gmail transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.GMAIL_APP_PASSWORD
+      }
+    });
 
     // Validate and sanitize email addresses
     const validRecipients = recipients
@@ -69,7 +86,14 @@ export async function POST(request: NextRequest) {
       .filter(email => validateEmail(email))
       .map(email => sanitizeInput(email));
     
+    console.log("📧 Email validation results:", {
+      original: recipients,
+      valid: validRecipients,
+      invalid: recipients.filter(email => !validateEmail(email.trim()))
+    });
+    
     if (validRecipients.length === 0) {
+      console.log("❌ No valid email addresses after validation");
       return NextResponse.json(
         { error: "No valid email addresses provided" },
         { status: 400 }
@@ -80,6 +104,12 @@ export async function POST(request: NextRequest) {
     const sanitizedSummary = sanitizeInput(summary);
     const sanitizedInstruction = instruction ? sanitizeInput(instruction) : "";
     const sanitizedTimestamp = timestamp ? sanitizeInput(timestamp) : new Date().toISOString();
+
+    console.log("📝 Sanitized inputs:", {
+      summaryLength: sanitizedSummary.length,
+      instructionLength: sanitizedInstruction.length,
+      timestamp: sanitizedTimestamp
+    });
 
     // Create email content
     const emailHtml = `
@@ -137,21 +167,24 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
+    console.log("📧 Attempting to send emails to:", validRecipients);
+
     // Send emails to all recipients
     const emailPromises = validRecipients.map(async (email) => {
       try {
-        if (!resend) {
-          throw new Error("Resend not initialized");
-        }
-        await resend.emails.send({
-          from: "LuminaMinutes <onboarding@resend.dev>",
-          to: [email],
+        console.log(`📤 Sending email to: ${email}`);
+        
+        const result = await transporter.sendMail({
+          from: `"LuminaMinutes" <${process.env.GMAIL_USER}>`,
+          to: email,
           subject: "Meeting Summary - Generated with LuminaMinutes",
           html: emailHtml,
         });
-        return { email, success: true };
+        
+        console.log(`✅ Email sent successfully to ${email}:`, result);
+        return { email, success: true, result };
       } catch (error) {
-        console.error(`Failed to send email to ${email}:`, error);
+        console.error(`❌ Failed to send email to ${email}:`, error);
         return { email, success: false, error: error instanceof Error ? error.message : "Unknown error" };
       }
     });
@@ -160,15 +193,23 @@ export async function POST(request: NextRequest) {
     const successful = results.filter(r => r.success);
     const failed = results.filter(r => !r.success);
 
-    console.log("Email sending results:", { successful, failed });
+    console.log("📊 Email sending results:", { 
+      successful: successful.length, 
+      failed: failed.length,
+      successfulEmails: successful.map(r => r.email),
+      failedEmails: failed.map(r => ({ email: r.email, error: r.error }))
+    });
 
     if (successful.length === 0) {
+      console.log("❌ All emails failed to send");
       return NextResponse.json(
         { error: "Failed to send emails to all recipients", details: failed },
         { status: 500 }
       );
     }
 
+    console.log("🎉 Email sending completed successfully");
+    
     return NextResponse.json({
       message: `Emails sent successfully to ${successful.length} recipient(s)`,
       successful: successful.map(r => r.email),
@@ -177,19 +218,19 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error in send-email API:", error);
+    console.error("💥 Error in send-email API:", error);
     
     if (error instanceof Error) {
-      if (error.message.includes("API key")) {
+      if (error.message.includes("authentication")) {
         return NextResponse.json(
-          { error: "Invalid API key. Please check your Resend configuration." },
+          { error: "Gmail authentication failed. Please check your credentials." },
           { status: 401 }
         );
       }
       
       if (error.message.includes("quota") || error.message.includes("rate limit")) {
         return NextResponse.json(
-          { error: "Email sending quota exceeded. Please try again later." },
+          { error: "Gmail sending quota exceeded. Please try again later." },
           { status: 429 }
         );
       }

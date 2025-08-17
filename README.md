@@ -161,6 +161,30 @@ Send formatted summaries via email.
 }
 ```
 
+## ⚠️ **Important Notes**
+
+### **Email Configuration (Gmail SMTP)**
+- **No Domain Required**: ✅ Uses your Gmail account with app password
+- **Immediate Setup**: ✅ Works immediately after configuration
+- **Daily Limit**: 500 emails per day
+- **Rate Limit**: 20 emails per minute
+- **Professional Delivery**: Excellent spam protection and deliverability
+
+### **Environment Variables Required**
+```bash
+GEMINI_API_KEY=your_gemini_api_key_here
+GMAIL_USER=your_gmail@gmail.com
+GMAIL_APP_PASSWORD=your_gmail_app_password
+```
+
+**✅ Gmail SMTP**: No domain verification needed - works immediately!
+
+### **Setup Requirements**
+- **Gmail Account**: Your existing Gmail address
+- **2-Factor Authentication**: Must be enabled on your Google account
+- **App Password**: Generated specifically for LuminaMinutes
+- **No Domain**: Gmail handles all the email infrastructure
+
 ## 🎨 **Customization**
 
 ### **Themes**

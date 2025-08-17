@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit3, Share2, Download, Copy, Check } from "lucide-react";
@@ -127,15 +127,18 @@ function SummaryContent() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to send email");
+        throw new Error(data.error || "Failed to send email");
       }
 
-      toast.success("Email sent successfully!");
+      toast.success(data.message || "Email sent successfully!");
       setIsEmailModalOpen(false);
       setEmailRecipients("");
-    } catch {
-      toast.error("Failed to send email. Please try again.");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to send email. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setIsSending(false);
     }
@@ -284,6 +287,9 @@ function SummaryContent() {
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle>Send Summary via Email</DialogTitle>
+                    <DialogDescription>
+                      Enter the email addresses of the people you want to share this summary with.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
