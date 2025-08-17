@@ -102,7 +102,7 @@ Format the summary in a clear, professional manner that would be useful for team
     );
 
     const generatePromise = model.generateContent(prompt);
-    const result = await Promise.race([generatePromise, timeoutPromise]) as any;
+    const result = await Promise.race([generatePromise, timeoutPromise]) as { response: { text: () => string } };
     const summary = result.response.text();
 
     if (!summary) {

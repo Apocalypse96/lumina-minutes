@@ -4,7 +4,7 @@ export interface AppError {
   message: string;
   code?: string;
   statusCode?: number;
-  details?: any;
+  details?: unknown;
   timestamp: string;
   userAgent?: string | undefined;
   url?: string | undefined;
@@ -13,9 +13,9 @@ export interface AppError {
 export class LuminaError extends Error {
   public code: string;
   public statusCode: number;
-  public details?: any;
+  public details?: unknown;
 
-  constructor(message: string, code: string = 'UNKNOWN_ERROR', statusCode: number = 500, details?: any) {
+  constructor(message: string, code: string = 'UNKNOWN_ERROR', statusCode: number = 500, details?: unknown) {
     super(message);
     this.name = 'LuminaError';
     this.code = code;
@@ -49,38 +49,63 @@ export const ERROR_MESSAGES = {
 } as const;
 
 // Create user-friendly error messages
-export function createUserFriendlyError(error: any): string {
+export function createUserFriendlyError(error: unknown): string {
   if (error instanceof LuminaError) {
     return ERROR_MESSAGES[error.code as keyof typeof ERROR_MESSAGES] || error.message;
   }
   
-  if (error.code && ERROR_MESSAGES[error.code as keyof typeof ERROR_MESSAGES]) {
-    return ERROR_MESSAGES[error.code as keyof typeof ERROR_MESSAGES];
+  // Type guard to check if error has a code property
+  if (typeof error === 'object' && error !== null && 'code' in error && typeof (error as { code: unknown }).code === 'string') {
+    const errorCode = (error as { code: string }).code;
+    if (ERROR_MESSAGES[errorCode as keyof typeof ERROR_MESSAGES]) {
+      return ERROR_MESSAGES[errorCode as keyof typeof ERROR_MESSAGES];
+    }
   }
   
   // Handle common error patterns
-  if (error.message?.includes('rate limit')) {
-    return ERROR_MESSAGES[ERROR_CODES.RATE_LIMIT_EXCEEDED];
-  }
-  
-  if (error.message?.includes('validation')) {
-    return ERROR_MESSAGES[ERROR_CODES.VALIDATION_ERROR];
-  }
-  
-  if (error.message?.includes('network') || error.message?.includes('fetch')) {
-    return ERROR_MESSAGES[ERROR_CODES.NETWORK_ERROR];
+  if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
+    const errorMessage = (error as { message: string }).message;
+    
+    if (errorMessage.includes('rate limit')) {
+      return ERROR_MESSAGES[ERROR_CODES.RATE_LIMIT_EXCEEDED];
+    }
+    
+    if (errorMessage.includes('validation')) {
+      return ERROR_MESSAGES[ERROR_CODES.VALIDATION_ERROR];
+    }
+    
+    if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+      return ERROR_MESSAGES[ERROR_CODES.NETWORK_ERROR];
+    }
   }
   
   return ERROR_MESSAGES[ERROR_CODES.INTERNAL_ERROR];
 }
 
 // Log errors for debugging and monitoring
-export function logError(error: any, context?: { userAgent?: string; url?: string; userId?: string }) {
+export function logError(error: unknown, context?: { userAgent?: string; url?: string; userId?: string }) {
+  // Type guard to safely access error properties
+  const errorMessage = typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message: unknown }).message === 'string' 
+    ? (error as { message: string }).message 
+    : 'Unknown error';
+    
+  const errorCode = typeof error === 'object' && error !== null && 'code' in error && typeof (error as { code: unknown }).code === 'string'
+    ? (error as { code: string }).code
+    : 'UNKNOWN';
+    
+  const errorStatusCode = typeof error === 'object' && error !== null && 'statusCode' in error && typeof (error as { statusCode: unknown }).statusCode === 'number'
+    ? (error as { statusCode: number }).statusCode
+    : 500;
+    
+  const errorDetails = typeof error === 'object' && error !== null && 'details' in error
+    ? (error as { details: unknown }).details
+    : (typeof error === 'object' && error !== null && 'stack' in error ? (error as { stack: unknown }).stack : undefined);
+    
   const errorInfo: AppError = {
-    message: error.message || 'Unknown error',
-    code: error.code || 'UNKNOWN',
-    statusCode: error.statusCode || 500,
-    details: error.details || error.stack,
+    message: errorMessage,
+    code: errorCode,
+    statusCode: errorStatusCode,
+    details: errorDetails,
     timestamp: new Date().toISOString(),
     userAgent: context?.userAgent,
     url: context?.url,
@@ -89,8 +114,8 @@ export function logError(error: any, context?: { userAgent?: string; url?: strin
   // In development, log to console
   if (process.env.NODE_ENV === 'development') {
     console.error('🚨 Error logged:', errorInfo);
-    if (error.stack) {
-      console.error('Stack trace:', error.stack);
+    if (typeof error === 'object' && error !== null && 'stack' in error && typeof (error as { stack: unknown }).stack === 'string') {
+      console.error('Stack trace:', (error as { stack: string }).stack);
     }
   }
 
@@ -105,7 +130,7 @@ export function logError(error: any, context?: { userAgent?: string; url?: strin
 }
 
 // Handle API errors consistently
-export function handleAPIError(error: any, defaultMessage: string = 'An error occurred'): AppError {
+export function handleAPIError(error: unknown, defaultMessage: string = 'An error occurred'): AppError {
   let appError: AppError;
 
   if (error instanceof LuminaError) {
@@ -117,11 +142,19 @@ export function handleAPIError(error: any, defaultMessage: string = 'An error oc
       timestamp: new Date().toISOString(),
     };
   } else {
+    const errorMessage = typeof error === 'object' && error !== null && 'message' in error && typeof (error as { message: unknown }).message === 'string'
+      ? (error as { message: string }).message
+      : defaultMessage;
+      
+    const errorStack = typeof error === 'object' && error !== null && 'stack' in error && typeof (error as { stack: unknown }).stack === 'string'
+      ? (error as { stack: string }).stack
+      : undefined;
+      
     appError = {
-      message: error.message || defaultMessage,
+      message: errorMessage,
       code: ERROR_CODES.INTERNAL_ERROR,
       statusCode: 500,
-      details: error.stack,
+      details: errorStack,
       timestamp: new Date().toISOString(),
     };
   }

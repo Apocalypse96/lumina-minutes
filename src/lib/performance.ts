@@ -99,9 +99,10 @@ export class PerformanceMonitor {
         // Monitor First Input Delay (FID)
         const fidObserver = new PerformanceObserver((list) => {
           const entries = list.getEntries();
-          entries.forEach((entry: any) => {
-            if (entry.processingStart && entry.startTime) {
-              const fid = entry.processingStart - entry.startTime;
+          entries.forEach((entry: unknown) => {
+            const fidEntry = entry as { processingStart?: number; startTime?: number };
+            if (fidEntry.processingStart && fidEntry.startTime) {
+              const fid = fidEntry.processingStart - fidEntry.startTime;
               if (process.env.NODE_ENV === 'development') {
                 console.log(`⚡ FID: ${fid.toFixed(2)}ms`);
               }
@@ -114,9 +115,10 @@ export class PerformanceMonitor {
         const clsObserver = new PerformanceObserver((list) => {
           let cls = 0;
           const entries = list.getEntries();
-          entries.forEach((entry: any) => {
-            if (!entry.hadRecentInput) {
-              cls += entry.value;
+          entries.forEach((entry: unknown) => {
+            const clsEntry = entry as { hadRecentInput?: boolean; value?: number };
+            if (!clsEntry.hadRecentInput && clsEntry.value) {
+              cls += clsEntry.value;
             }
           });
           if (process.env.NODE_ENV === 'development') {
@@ -159,14 +161,14 @@ export function analyzeBundleSize(): void {
 // Memory usage monitor
 export function getMemoryUsage(): number | null {
   if (typeof window !== 'undefined' && 'memory' in performance) {
-    const memory = (performance as any).memory;
+    const memory = (performance as { memory: { usedJSHeapSize: number } }).memory;
     return memory.usedJSHeapSize / 1024 / 1024; // Convert to MB
   }
   return null;
 }
 
 // Debounce utility for performance optimization
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -179,7 +181,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle utility for performance optimization
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {

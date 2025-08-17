@@ -27,21 +27,24 @@ export const rateLimiters = {
 // Rate limiting middleware
 export async function rateLimit(
   limiter: RateLimiterMemory,
-  req: any,
-  _res: any
+  req: { ip?: string } | { headers: Headers },
+  _res: unknown
 ): Promise<{ success: boolean; remainingPoints: number; resetTime: number }> {
   try {
-    const result = await limiter.consume(req.ip || 'unknown');
+    // Handle both NextRequest and regular request objects
+    const ip = 'ip' in req ? req.ip : 'unknown';
+    const result = await limiter.consume(ip || 'unknown');
     return {
       success: true,
       remainingPoints: result.remainingPoints,
       resetTime: result.msBeforeNext,
     };
-  } catch (rejRes: any) {
+  } catch (rejRes: unknown) {
+    const error = rejRes as { msBeforeNext: number };
     return {
       success: false,
       remainingPoints: 0,
-      resetTime: rejRes.msBeforeNext,
+      resetTime: error.msBeforeNext,
     };
   }
 }

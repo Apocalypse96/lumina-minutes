@@ -13,7 +13,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error?: Error;
-  errorInfo?: any;
+  errorInfo?: unknown;
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
@@ -26,7 +26,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: unknown) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.setState({ error, errorInfo });
     
