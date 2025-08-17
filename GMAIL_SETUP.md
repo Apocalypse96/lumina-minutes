@@ -5,6 +5,7 @@
 ✅ **Immediate Setup**: No verification or waiting needed  
 ✅ **Reliable**: Gmail's infrastructure is rock-solid  
 ✅ **Free**: No additional costs beyond your Gmail account  
+✅ **Professional**: Excellent deliverability and spam protection  
 
 ## 🔧 **Step-by-Step Setup**
 
@@ -23,11 +24,10 @@
 Edit your `.env.local` file:
 
 ```bash
-# Remove or comment out Resend variables
-# RESEND_API_KEY=your_resend_api_key_here
-# RESEND_FROM_EMAIL=LuminaMinutes <noreply@lumina.com>
+# Gemini API Configuration
+GEMINI_API_KEY=your_gemini_api_key_here
 
-# Add Gmail variables
+# Gmail SMTP Configuration
 GMAIL_USER=your_actual_gmail@gmail.com
 GMAIL_APP_PASSWORD=abcd efgh ijkl mnop
 ```
@@ -70,6 +70,14 @@ npm run dev
 - ✅ **Professional email delivery**
 - ✅ **Excellent spam protection**
 - ✅ **No monthly costs**
+- ✅ **High deliverability rates**
 
 ## 🎉 **You're All Set!**
 Your LuminaMinutes app now uses Gmail SMTP and can send emails to anyone without any domain requirements!
+
+## 🔄 **Migration from Resend**
+If you were previously using Resend:
+- **No more domain verification needed**
+- **No more API key management**
+- **Simpler setup process**
+- **Better deliverability with Gmail**
