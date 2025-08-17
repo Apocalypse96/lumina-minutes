@@ -85,7 +85,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/lumina-minutes.git
+git clone https://github.com/Apocalypse96/lumina-minutes.git
 cd lumina-minutes
 
 # Install dependencies
@@ -235,11 +235,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Next.js Team** for the amazing framework
 - **TailwindCSS** for utility-first styling
 
-## 📞 **Support**
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/lumina-minutes/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/lumina-minutes/discussions)
-- **Email**: support@luminaminutes.com
 
 ---
 
